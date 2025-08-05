@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import io
 
 st.set_page_config(page_title="تحليل الموظفين بين 52 و60 سنة", layout="wide")
 st.title("تحليل الموظفين في بيانات الموارد البشرية")
@@ -23,6 +24,9 @@ if uploaded_file:
 
     # التأكد من وجود عمود العمر
     if 'العمر' in df.columns:
+        # تحويل العمود إلى أرقام (لو كان فيه قيم نصية)
+        df['العمر'] = pd.to_numeric(df['العمر'], errors='coerce')
+
         # تصفية الموظفين بين 52 و60 سنة
         age_filtered_df = df[(df['العمر'] >= 52) & (df['العمر'] <= 60)]
 
@@ -37,12 +41,19 @@ if uploaded_file:
         st.subheader("📋 تفاصيل الموظفين")
         st.dataframe(age_filtered_df)
 
-        # تحميل البيانات كـ Excel
+        # دالة لتحويل DataFrame إلى Excel بداخل BytesIO
         @st.cache_data
-        def convert_df_to_excel(dataframe):
-            return dataframe.to_excel(index=False, engine='openpyxl')
+        def convert_df_to_excel_bytes(df):
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False)
+            processed_data = output.getvalue()
+            return processed_data
 
-        excel_data = convert_df_to_excel(age_filtered_df)
+        # تجهيز البيانات للتحميل
+        excel_data = convert_df_to_excel_bytes(age_filtered_df)
+
+        # زر التحميل
         st.download_button(
             label="📥 تحميل البيانات كـ Excel",
             data=excel_data,
